@@ -1,0 +1,126 @@
+from core_users.authentication_models import RegistrationSession, CustomUser
+from core_users.models import UserApplication, EducationDetailsModel
+from datetime import timedelta
+from django.utils import timezone
+import os
+
+registration_expiry_hours = int(os.environ.get('REGISTRATION_EXPIRY_HOURS', 24))
+
+class AuthenticationServices:
+    """Services related to user registration flow"""
+
+    @staticmethod
+    def start_registration(email, phone, first_name, last_name):
+        """Starts a new Registration Process"""
+
+        if CustomUser.objects.filter(email=email).exists():
+            return False, "Email already registered", None
+        if CustomUser.objects.filter(phone=phone).exists():
+            return False, "Phone already registered", None
+
+        expiry_time = timezone.now() + timedelta(hours=registration_expiry_hours)
+
+        registration_session = RegistrationSession.objects.create(email=email,
+                                                                  phone=phone,
+                                                                  first_name=first_name,
+                                                                  last_name=last_name,
+                                                                  expires_at=expiry_time)
+        registration_session.save()
+
+        return True, "Registration Started", registration_session
+
+
+    @staticmethod
+    def update_verification_status(session_id, verification_type):
+        """Update verification status for the Registration Sessions"""
+
+        try:
+            session = RegistrationSession.objects.get(id=session_id)
+
+            if verification_type == 'email':
+                session.is_email_verified=True
+            else:
+                session.is_phone_verified=True
+
+            session.save()
+            return True, "Verification Status Updated"
+
+        except Exception as e:
+            return False, f"Error encountered: {str(e)}"
+
+
+    @staticmethod
+    def complete_registration(session_id, password):
+        """Create the CustomUser object, set Password"""
+
+        try:
+            session = RegistrationSession.objects.get(id=session_id)
+
+            if session.is_expired():
+                return False, "Registration Session has Expired", None
+
+
+            if not(session.is_email_verified and session.is_phone_verified):
+                return False, "Email or Phone verification still pending", None
+
+            user = CustomUser.objects.create(email=session.email,
+                                             phone=session.phone,
+                                             first_name=session.first_name,
+                                             last_name=session.last_name)
+            user.set_password(password)
+            user.save()
+            session.delete()
+
+            # TODO may be move this to core_users.signals
+            application = UserApplication.objects.create(user=user)
+            application.save()
+
+            education_details = EducationDetailsModel.objects.create(user=user, user_application=application)
+            education_details.save()
+
+
+            return True, "User has been registered successfully", user
+
+        except RegistrationSession.DoesNotExist:
+            return False, "No active Registration Session found", None
+
+        except Exception as e:
+            return False, f"Error encountered: {str(e)}", None
+
+    @staticmethod
+    def reset_password(user, new_password):
+        """ Reset user password """
+        try:
+            reset_user = CustomUser.objects.get(user=user)
+            reset_user.set_password(new_password)
+            reset_user.save()
+
+        except Exception as e:
+            return False, f"Error encountered: {str(e)}"
+
+# class UserApplicationServices:
+#     """User Application Related Services goes here"""
+#
+#     @staticmethod
+#     def generate_user_application_id():
+#         current_year = timezone.now().year
+#         last_app = UserApplication.objects.filter(
+#             application_id__startswith=f'PWC{current_year}'
+#         ).order_by('-application_id').first()
+#
+#         if last_app:
+#             try:
+#                 last_seq = int(last_app.application_id[5:])
+#                 next_seq = last_seq + 1
+#             except ValueError:
+#                 next_seq = 1
+#         else:
+#             next_seq = 1
+#
+#         return f'PWC{current_year}{next_seq:05d}'
+#
+
+
+
+
+
