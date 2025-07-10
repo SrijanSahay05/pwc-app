@@ -93,7 +93,6 @@ class CourseApplicationAPIView(APIView):
                 available_options.pop(option_key)
 
         # 5. creating the context
-
         context = {
             "selected_values" : selected_values,
             "available_options" : available_options

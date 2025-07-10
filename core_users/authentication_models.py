@@ -9,40 +9,43 @@ from django.utils import timezone
 
 class CustomUser(AbstractUser):
     """
-    The custom user authentication model,created once the registration session
-    model has email and phone verified.
-
+    Custom user authentication model for PWC application
+    
     Model Fields:
-        - email
-        - phone
-        - first_name
-        - last_name
-        - username : over-ride to none
-        - is_admitted
-        - admission_date
-        - created_on
-        - updated_on
-        - is_active
+        - email: Primary identifier (unique)
+        - phone: Secondary identifier (unique)
+        - first_name, last_name: User's full name
+        - username: Disabled (uses email instead)
+        - is_admitted: Admission status
+        - admission_date: Date of admission
+        - created_at, updated_at: Timestamps
+        - is_active: Account status
     """
 
+    # Core identification fields
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=10, unique=True)
-
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
 
+    # Disable username field (use email instead)
     username = None
 
+    # Admission tracking
     is_admitted = models.BooleanField(default=False)
     admission_date = models.DateTimeField(null=True, blank=True)
 
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Account status
     is_active = models.BooleanField(default=True)
 
+    # Custom manager
     objects = CustomUserManager()
 
+    # Authentication configuration
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['phone']
 
@@ -55,32 +58,37 @@ class CustomUser(AbstractUser):
 
 class RegistrationSession(models.Model):
     """
-    Registration Service Model. Helps users to continue their pending user registration flow
-    even after they reopen the website / app.
-    Registration Sessions will have an expiry time of 24hrs (can be changed from .env)
-
+    Registration session for multi-step user registration flow
+    
     Model Fields:
-        - email
-        - phone
-        - first_name
-        - last_name
-        - is_email_verified
-        - is_phone_verified
+        - email, phone: User contact information
+        - first_name, last_name: User's name
+        - is_email_verified, is_phone_verified: Verification status
+        - expires_at: Session expiry timestamp
     """
 
+    # User information
     email = models.EmailField()
     phone = models.CharField(max_length=10)
-
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
 
+    # Verification status
     is_email_verified = models.BooleanField(default=False)
     is_phone_verified = models.BooleanField(default=False)
 
+    # Session management
     expires_at = models.DateTimeField()
 
     def __str__(self):
         return f"Registration Session for {self.email} - {self.phone}"
 
     def is_expired(self):
-        return timezone.now()>self.expires_at
+        """
+        Check if registration session has expired
+        
+        PHASE 1: Compare current time with expiry time
+        PHASE 2: Return expiry status
+        """
+        # PHASE 1: Check if current time is past expiry
+        return timezone.now() > self.expires_at
