@@ -53,6 +53,7 @@ show_usage() {
     echo "  health      - Check application health"
     echo "  backup      - Create database backup"
     echo "  restore     - Restore database from backup"
+    echo "  ssl-setup   - Set up SSL certificates"
     echo "  help        - Show this help message"
     echo ""
     echo "Examples:"
@@ -80,8 +81,21 @@ check_env() {
 # Function to check SSL certificates
 check_ssl() {
     if [ ! -f ssl/cert.pem ] || [ ! -f ssl/key.pem ]; then
-        print_error "SSL certificates not found. Please run scripts/setup_ssl.sh first."
-        exit 1
+        print_warning "SSL certificates not found in ssl/ directory."
+        echo -n "Do you want to run SSL setup now? (y/N): "
+        read -r ssl_choice
+        if [[ $ssl_choice =~ ^[Yy]$ ]]; then
+            print_status "Running SSL setup..."
+            sudo ./scripts/setup_ssl.sh
+            if [[ $? -ne 0 ]]; then
+                print_error "SSL setup failed. Please run it manually: sudo ./scripts/setup_ssl.sh"
+                exit 1
+            fi
+        else
+            print_error "SSL certificates required for production deployment."
+            print_status "Please run: sudo ./scripts/setup_ssl.sh"
+            exit 1
+        fi
     fi
 }
 
@@ -313,7 +327,7 @@ restore_backup() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_status "Restoring database from backup..."
-        docker-compose --env-file .env.prod -f docker-compose.prod.yml exec -T -U $DB_USER $DB_NAME < "$BACKUP_FILE"
+        docker-compose --env-file .env.prod -f docker-compose.prod.yml exec -T db psql -U $DB_USER $DB_NAME < "$BACKUP_FILE"
         
         if [ $? -eq 0 ]; then
             print_success "Database restored successfully!"
@@ -323,6 +337,32 @@ restore_backup() {
         fi
     else
         print_status "Database restore cancelled."
+    fi
+}
+
+# Function to setup SSL certificates
+setup_ssl() {
+    print_status "Setting up SSL certificates..."
+    
+    if [[ $EUID -ne 0 ]]; then
+        print_error "SSL setup requires root privileges. Please run with sudo."
+        exit 1
+    fi
+    
+    if [ ! -f "./scripts/setup_ssl.sh" ]; then
+        print_error "SSL setup script not found: ./scripts/setup_ssl.sh"
+        exit 1
+    fi
+    
+    print_status "Running SSL certificate setup..."
+    bash ./scripts/setup_ssl.sh
+    
+    if [[ $? -eq 0 ]]; then
+        print_success "SSL certificates setup completed successfully!"
+        print_status "You can now run: ./scripts/deploy_prod.sh build"
+    else
+        print_error "SSL certificates setup failed!"
+        exit 1
     fi
 }
 
@@ -366,6 +406,9 @@ case "${1:-help}" in
         ;;
     restore)
         restore_backup "$2"
+        ;;
+    ssl-setup)
+        setup_ssl
         ;;
     help|--help|-h)
         show_usage

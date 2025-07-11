@@ -419,6 +419,40 @@ EOF
     fi
 }
 
+# Function to copy SSL certificates to project directory
+copy_ssl_certificates() {
+    local domain=$1
+    
+    print_status "Copying SSL certificates to project directory..."
+    
+    # Create ssl directory if it doesn't exist
+    mkdir -p ssl
+    
+    # Copy certificates
+    if [[ -f "/etc/letsencrypt/live/$domain/fullchain.pem" ]]; then
+        cp "/etc/letsencrypt/live/$domain/fullchain.pem" "ssl/cert.pem"
+        print_success "Copied fullchain.pem to ssl/cert.pem"
+    else
+        print_error "SSL certificate not found at /etc/letsencrypt/live/$domain/fullchain.pem"
+        return 1
+    fi
+    
+    if [[ -f "/etc/letsencrypt/live/$domain/privkey.pem" ]]; then
+        cp "/etc/letsencrypt/live/$domain/privkey.pem" "ssl/key.pem"
+        print_success "Copied privkey.pem to ssl/key.pem"
+    else
+        print_error "SSL private key not found at /etc/letsencrypt/live/$domain/privkey.pem"
+        return 1
+    fi
+    
+    # Set proper permissions
+    chmod 644 ssl/cert.pem
+    chmod 600 ssl/key.pem
+    
+    print_success "SSL certificates copied to project directory"
+    print_status "Certificates are ready for Docker deployment"
+}
+
 # Main function
 main() {
     echo "================================================"
@@ -498,6 +532,9 @@ main() {
     
     # Display certificate information
     display_certificate_info "$domain"
+    
+    # Copy SSL certificates to project directory
+    copy_ssl_certificates "$domain"
     
     # Create sample configuration
     create_sample_config "$domain"

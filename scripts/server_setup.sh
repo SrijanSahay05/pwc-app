@@ -346,8 +346,8 @@ run_ssl_setup() {
     print_header "Running SSL certificate setup..."
     
     # Check if SSL setup script exists
-    if [[ ! -f "./setup-ssl.sh" ]]; then
-        print_error "SSL setup script not found. Please ensure setup-ssl.sh is in the current directory."
+    if [[ ! -f "./scripts/setup_ssl.sh" ]]; then
+        print_error "SSL setup script not found. Please ensure scripts/setup_ssl.sh exists."
         return 1
     fi
     
@@ -355,7 +355,7 @@ run_ssl_setup() {
     print_warning "You will be prompted for domain name and email address"
     
     # Run SSL setup script
-    bash ./setup-ssl.sh
+    bash ./scripts/setup_ssl.sh
     
     if [[ $? -eq 0 ]]; then
         print_success "SSL certificate setup completed successfully"
@@ -430,8 +430,8 @@ main() {
     
     echo
     print_header "Next Steps:"
-    echo "1. If you skipped SSL setup, run: sudo ./setup-ssl.sh"
-    echo "2. Deploy your application: ./deploy-prod.sh"
+    echo "1. If you skipped SSL setup, run: sudo ./scripts/setup_ssl.sh"
+    echo "2. Deploy your application: ./scripts/deploy_prod.sh build"
     echo "3. Your website will be available at: https://yourdomain.com"
     
     echo

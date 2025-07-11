@@ -58,6 +58,7 @@ Production environment management script with administrative controls.
 - `health` - Check application health
 - `backup` - Create database backup
 - `restore` - Restore database from backup
+- `ssl-setup` - Set up SSL certificates
 - `help` - Show help message
 
 ### 🔒 SSL Setup Script
@@ -69,6 +70,7 @@ Automated SSL certificate setup script.
 - Configures Nginx with SSL
 - Sets up auto-renewal
 - Integrates with Docker containers
+- Copies certificates to project directory
 
 **Usage:**
 ```bash
@@ -77,6 +79,27 @@ sudo ./scripts/setup_ssl.sh
 
 # With domain name
 sudo ./scripts/setup_ssl.sh yourdomain.com
+```
+
+### 🚀 Complete Server Deployment Script
+
+#### `deploy_server.sh`
+Complete server deployment script that combines server setup, SSL configuration, and application deployment.
+- Sets up fresh Ubuntu server with all dependencies
+- Configures SSL certificates automatically
+- Deploys the application with proper configuration
+- Handles the entire deployment pipeline
+
+**Usage:**
+```bash
+# Complete deployment with SSL
+sudo ./scripts/deploy_server.sh --domain example.com --email admin@example.com
+
+# Skip server setup (if already configured)
+sudo ./scripts/deploy_server.sh --domain example.com --email admin@example.com --skip-server-setup
+
+# Skip SSL setup (for development/testing)
+sudo ./scripts/deploy_server.sh --skip-ssl
 ```
 
 ## 🔧 Administrative Commands
@@ -125,6 +148,9 @@ sudo ./scripts/setup_ssl.sh yourdomain.com
 
 ### Production-Specific Operations
 ```bash
+# Set up SSL certificates
+sudo ./scripts/deploy_prod.sh ssl-setup
+
 # Create database backup
 ./scripts/deploy_prod.sh backup
 
@@ -206,20 +232,29 @@ nano .env.dev
 ./scripts/deploy_dev.sh start
 ```
 
-### Production
+### Production (Step by Step)
 ```bash
 # Environment file will be auto-generated from env.prod.example
 # Edit .env.prod with your settings (if needed)
 nano .env.prod
 
-# Set up SSL certificates
-./scripts/setup_ssl.sh
+# Set up SSL certificates (requires sudo)
+sudo ./scripts/deploy_prod.sh ssl-setup
 
 # Full deployment
 ./scripts/deploy_prod.sh build
 
 # Or start only
 ./scripts/deploy_prod.sh start
+```
+
+### Production (Complete Automation)
+```bash
+# Complete server setup, SSL, and deployment in one command
+sudo ./scripts/deploy_server.sh --domain example.com --email admin@example.com
+
+# For existing servers (skip server setup)
+sudo ./scripts/deploy_server.sh --domain example.com --email admin@example.com --skip-server-setup
 ```
 
 ## 🚨 Troubleshooting
