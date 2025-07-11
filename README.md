@@ -22,6 +22,20 @@ pwc-app/
 │   ├── views.py                   # Course application API views
 │   ├── serializers.py            # Serializers for course data
 │   └── urls.py                    # URL patterns for course APIs
+├── scripts/                       # Deployment and setup scripts
+│   ├── deploy_dev.sh             # Development deployment script
+│   ├── deploy_prod.sh            # Production deployment script
+│   ├── setup_ssl.sh              # SSL certificate setup script
+│   └── README.md                 # Scripts documentation
+├── nginx/                         # Nginx configurations
+│   ├── nginx.dev.conf            # Development Nginx config
+│   └── nginx.prod.conf           # Production Nginx config
+├── Dockerfile.dev                 # Development Dockerfile
+├── Dockerfile.prod                # Production Dockerfile
+├── docker-compose.dev.yml         # Development Docker Compose
+├── docker-compose.prod.yml        # Production Docker Compose
+├── env.dev.example               # Development environment template
+├── env.prod.example              # Production environment template
 └── manage.py
 ```
 

@@ -1,0 +1,52 @@
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DJANGO_SETTINGS_MODULE=core.settings
+
+# Set work directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        postgresql-client \
+        libpq-dev \
+        build-essential \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create non-root user
+RUN adduser --disabled-password --gecos '' appuser
+
+# Copy project
+COPY . .
+
+# Create necessary directories and set permissions
+RUN mkdir -p /app/media /app/staticfiles /app/logs \
+    && chown -R appuser:appuser /app
+
+# Collect static files
+RUN python manage.py collectstatic --noinput
+
+# Change ownership of static files
+RUN chown -R appuser:appuser /app/staticfiles
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health/ || exit 1
+
+# Run the application with Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "core.wsgi:application"] 
