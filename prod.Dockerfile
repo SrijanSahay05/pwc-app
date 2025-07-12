@@ -21,7 +21,7 @@ RUN pip install gunicorn
 COPY . .
 
 # Create directories
-RUN mkdir -p staticfiles media
+RUN mkdir -p staticfiles media static logs
 
 EXPOSE 8000
 

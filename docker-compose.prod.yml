@@ -7,10 +7,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres_user -d django_prod"]
-      interval: 30s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pwc_prod_user} -d ${DB_NAME:-pwc_prod}"]
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 30s
 
   web:
     build:
@@ -18,11 +19,17 @@ services:
       dockerfile: prod.Dockerfile
     command: >
       sh -c "
-        echo 'Waiting for database...' &&
-        while ! nc -z db 5432; do sleep 1; done &&
-        echo 'Database ready!' &&
-        python manage.py migrate &&
+        echo 'Waiting for database to be ready...' &&
+        while ! nc -z db 5432; do 
+          echo 'Database not ready, waiting...' && 
+          sleep 2; 
+        done &&
+        echo 'Database is ready!' &&
+        echo 'Running migrations...' &&
+        python manage.py migrate --noinput &&
+        echo 'Collecting static files...' &&
         python manage.py collectstatic --noinput &&
+        echo 'Starting Gunicorn...' &&
         gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2
       "
     volumes:
@@ -34,7 +41,8 @@ services:
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
     expose:
       - "8000"

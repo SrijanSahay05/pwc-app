@@ -147,13 +147,8 @@ fi
 
 print_success "Containers started successfully"
 
-# Run Django migrations
-print_status "Running Django migrations..."
-docker-compose -f docker-compose.prod.yml exec -T web python manage.py migrate --noinput
-
-# Collect static files
-print_status "Collecting static files..."
-docker-compose -f docker-compose.prod.yml exec -T web python manage.py collectstatic --noinput
+# Note: Migrations and static collection are now handled in the container startup command
+print_status "Migrations and static collection are handled during container startup..."
 
 # Check if superuser exists, if not create one
 print_status "Checking for superuser..."
