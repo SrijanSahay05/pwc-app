@@ -7,7 +7,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pwc_prod_user} -d ${DB_NAME:-pwc_prod}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pwc_prod_user} -d ${POSTGRES_DB:-pwc_prod}"]
       interval: 10s
       timeout: 5s
       retries: 5

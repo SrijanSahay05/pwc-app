@@ -78,43 +78,66 @@ sed -i "s/www\.yourdomain\.com/www.$DOMAIN_NAME/g" nginx/nginx.prod.conf
 
 print_success "Nginx configuration updated"
 
-# Check if .env.prod exists, if not create from example
-if [ ! -f ".env.prod" ]; then
-    if [ -f "env.prod.example" ]; then
+# Always ensure .env.prod is properly configured
+if [ -f "env.prod.example" ]; then
+    print_status "Ensuring .env.prod is properly configured..."
+    
+    # Create .env.prod from example if it doesn't exist
+    if [ ! -f ".env.prod" ]; then
         print_status "Creating .env.prod from env.prod.example"
         cp env.prod.example .env.prod
-        
-        # Update domain in .env.prod (handle both variable and literal references)
-        sed -i "s/yourdomain\.com/$DOMAIN_NAME/g" .env.prod
-        sed -i "s/www\.yourdomain\.com/www.$DOMAIN_NAME/g" .env.prod
-        sed -i "s/DOMAIN_NAME=yourdomain\.com/DOMAIN_NAME=$DOMAIN_NAME/g" .env.prod
-        
-        # Generate secure secret key
-        SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')
-        sed -i "s/your-super-secret-production-key-change-this-immediately/$SECRET_KEY/g" .env.prod
-        
-        # Generate secure database password
-        DB_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
-        sed -i "s/your-strong-production-password/$DB_PASSWORD/g" .env.prod
-        
-        # Set secure file permissions
-        chmod 600 .env.prod
-        
-        print_success ".env.prod created with secure defaults"
-        print_warning "Please review and update .env.prod with your specific settings"
-        print_warning "Especially update the email settings for your email provider"
     else
-        print_error "No .env.prod or env.prod.example found"
-        print_error "Please create a production environment file"
-        exit 1
+        print_status "Updating .env.prod with latest configuration from example"
+        # Backup existing .env.prod
+        cp .env.prod .env.prod.backup
+        # Create new .env.prod from example
+        cp env.prod.example .env.prod
+        # Restore any custom values from backup (like existing passwords)
+        if [ -f ".env.prod.backup" ]; then
+            # Extract existing secret key and passwords if they're not placeholders
+            EXISTING_SECRET_KEY=$(grep "^SECRET_KEY=" .env.prod.backup | cut -d'=' -f2)
+            EXISTING_DB_PASSWORD=$(grep "^DB_PASSWORD=" .env.prod.backup | cut -d'=' -f2)
+            
+            # Only restore if they're not placeholders
+            if [ "$EXISTING_SECRET_KEY" != "your-super-secret-production-key-change-this-immediately" ] && [ -n "$EXISTING_SECRET_KEY" ]; then
+                sed -i "s/your-super-secret-production-key-change-this-immediately/$EXISTING_SECRET_KEY/g" .env.prod
+            fi
+            
+            if [ "$EXISTING_DB_PASSWORD" != "your-strong-production-password" ] && [ -n "$EXISTING_DB_PASSWORD" ]; then
+                sed -i "s/your-strong-production-password/$EXISTING_DB_PASSWORD/g" .env.prod
+            fi
+        fi
     fi
-else
-    print_status ".env.prod already exists, updating domain references..."
-    # Update domain in existing .env.prod
+    
+    # Update domain in .env.prod (handle both variable and literal references)
     sed -i "s/yourdomain\.com/$DOMAIN_NAME/g" .env.prod
     sed -i "s/www\.yourdomain\.com/www.$DOMAIN_NAME/g" .env.prod
     sed -i "s/DOMAIN_NAME=yourdomain\.com/DOMAIN_NAME=$DOMAIN_NAME/g" .env.prod
-    print_success "Domain references updated in existing .env.prod"
+    
+    # Generate secure secret key if it's still a placeholder
+    if grep -q "your-super-secret-production-key-change-this-immediately" .env.prod; then
+        print_status "Generating secure Django secret key..."
+        SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')
+        sed -i "s/your-super-secret-production-key-change-this-immediately/$SECRET_KEY/g" .env.prod
+    fi
+    
+    # Generate secure database password if it's still a placeholder
+    if grep -q "your-strong-production-password" .env.prod; then
+        print_status "Generating secure database password..."
+        DB_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+        sed -i "s/your-strong-production-password/$DB_PASSWORD/g" .env.prod
+    fi
+    
+    # Set secure file permissions
+    chmod 600 .env.prod
+    
+    print_success ".env.prod configured with secure defaults"
+    print_warning "Please review and update .env.prod with your specific settings"
+    print_warning "Especially update the email settings for your email provider"
+else
+    print_error "env.prod.example not found"
+    print_error "Please create a production environment example file"
+    exit 1
 fi
 
 # Create logs directory if it doesn't exist
