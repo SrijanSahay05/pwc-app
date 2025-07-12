@@ -184,6 +184,10 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 
 # Logging
+# Create logs directory if it doesn't exist
+logs_dir = BASE_DIR / 'logs'
+logs_dir.mkdir(exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -201,7 +205,7 @@ LOGGING = {
         'file': {
             'level': os.environ.get('LOG_LEVEL', 'INFO'),
             'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
+            'filename': logs_dir / 'django.log',
             'formatter': 'verbose',
         },
         'console': {

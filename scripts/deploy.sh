@@ -38,6 +38,9 @@ fi
 
 DOMAIN_NAME=$1
 
+# Export DOMAIN_NAME for Docker Compose
+export DOMAIN_NAME
+
 print_status "Starting deployment for domain: $DOMAIN_NAME"
 
 # Check if we're in the project root
@@ -114,6 +117,10 @@ else
     print_success "Domain references updated in existing .env.prod"
 fi
 
+# Create logs directory if it doesn't exist
+print_status "Ensuring logs directory exists..."
+mkdir -p logs
+
 # Stop any existing containers
 print_status "Stopping existing containers..."
 docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
@@ -124,7 +131,7 @@ docker-compose -f docker-compose.prod.yml down --rmi all 2>/dev/null || true
 
 # Build and start containers
 print_status "Building and starting containers..."
-docker-compose -f docker-compose.prod.yml up -d --build
+DOMAIN_NAME=$DOMAIN_NAME docker-compose -f docker-compose.prod.yml up -d --build
 
 # Wait for containers to be ready
 print_status "Waiting for containers to be ready..."
