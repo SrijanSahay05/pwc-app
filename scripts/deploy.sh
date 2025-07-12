@@ -81,9 +81,10 @@ if [ ! -f ".env.prod" ]; then
         print_status "Creating .env.prod from env.prod.example"
         cp env.prod.example .env.prod
         
-        # Update domain in .env.prod
+        # Update domain in .env.prod (handle both variable and literal references)
         sed -i "s/yourdomain\.com/$DOMAIN_NAME/g" .env.prod
         sed -i "s/www\.yourdomain\.com/www.$DOMAIN_NAME/g" .env.prod
+        sed -i "s/DOMAIN_NAME=yourdomain\.com/DOMAIN_NAME=$DOMAIN_NAME/g" .env.prod
         
         # Generate secure secret key
         SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')
@@ -93,13 +94,24 @@ if [ ! -f ".env.prod" ]; then
         DB_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
         sed -i "s/your-strong-production-password/$DB_PASSWORD/g" .env.prod
         
+        # Set secure file permissions
+        chmod 600 .env.prod
+        
         print_success ".env.prod created with secure defaults"
         print_warning "Please review and update .env.prod with your specific settings"
+        print_warning "Especially update the email settings for your email provider"
     else
         print_error "No .env.prod or env.prod.example found"
         print_error "Please create a production environment file"
         exit 1
     fi
+else
+    print_status ".env.prod already exists, updating domain references..."
+    # Update domain in existing .env.prod
+    sed -i "s/yourdomain\.com/$DOMAIN_NAME/g" .env.prod
+    sed -i "s/www\.yourdomain\.com/www.$DOMAIN_NAME/g" .env.prod
+    sed -i "s/DOMAIN_NAME=yourdomain\.com/DOMAIN_NAME=$DOMAIN_NAME/g" .env.prod
+    print_success "Domain references updated in existing .env.prod"
 fi
 
 # Stop any existing containers
