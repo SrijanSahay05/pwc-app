@@ -106,9 +106,9 @@ sudo pkill -f "apache" 2>/dev/null || true
 sleep 2
 
 # Verify ports are free
-if sudo netstat -tlnp | grep -E ":80 |:443 " > /dev/null; then
+if sudo ss -tlnp | grep -E ":80 |:443 " > /dev/null; then
     print_error "Ports 80 and 443 are still in use. Please stop the services manually and try again."
-    print_status "You can check what's using the ports with: sudo netstat -tlnp | grep -E ':80 |:443 '"
+    print_status "You can check what's using the ports with: sudo ss -tlnp | grep -E ':80 |:443 '"
     exit 1
 fi
 
@@ -135,7 +135,7 @@ HTTP_SERVER_PID=$!
 
 # Wait a moment for the server to start and verify it's running
 sleep 3
-if ! sudo netstat -tlnp | grep ":80 " > /dev/null; then
+if ! sudo ss -tlnp | grep ":80 " > /dev/null; then
     print_error "Failed to start temporary web server on port 80"
     exit 1
 fi
