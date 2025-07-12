@@ -59,9 +59,7 @@ sudo apt install -y \
     htop \
     vim \
     unzip \
-    nginx \
-    certbot \
-    python3-certbot-nginx
+    certbot
 
 # Install Docker
 print_status "Installing Docker..."
@@ -93,37 +91,65 @@ print_status "Configuring fail2ban..."
 sudo systemctl enable fail2ban
 sudo systemctl start fail2ban
 
-# Install nginx if not already installed
-print_status "Installing nginx..."
-sudo apt install -y nginx
+# Stop any services running on ports 80 and 443
+print_status "Stopping services on ports 80 and 443..."
+sudo systemctl stop nginx 2>/dev/null || true
+sudo systemctl stop apache2 2>/dev/null || true
+sudo systemctl stop lighttpd 2>/dev/null || true
 
-# Create basic nginx configuration for SSL setup
-print_status "Creating nginx configuration..."
-sudo tee /etc/nginx/sites-available/$DOMAIN_NAME > /dev/null << EOF
-server {
-    listen 80;
-    server_name $DOMAIN_NAME www.$DOMAIN_NAME;
-    
-    location / {
-        return 200 "Server is ready for Django deployment!";
-        add_header Content-Type text/plain;
-    }
-}
+# Kill any processes using ports 80 and 443
+sudo pkill -f "python.*http.server.*80" 2>/dev/null || true
+sudo pkill -f "nginx" 2>/dev/null || true
+sudo pkill -f "apache" 2>/dev/null || true
+
+# Wait a moment to ensure ports are free
+sleep 2
+
+# Verify ports are free
+if sudo netstat -tlnp | grep -E ":80 |:443 " > /dev/null; then
+    print_error "Ports 80 and 443 are still in use. Please stop the services manually and try again."
+    print_status "You can check what's using the ports with: sudo netstat -tlnp | grep -E ':80 |:443 '"
+    exit 1
+fi
+
+print_success "Ports 80 and 443 are now free"
+
+# Create a simple web server for SSL certificate validation
+print_status "Setting up temporary web server for SSL certificate..."
+sudo apt install -y python3-pip
+sudo pip3 install http-server
+
+# Create a simple HTML file for certificate validation
+sudo mkdir -p /tmp/certbot-webroot/.well-known/acme-challenge
+sudo tee /tmp/certbot-webroot/index.html > /dev/null << EOF
+<!DOCTYPE html>
+<html>
+<head><title>Server Setup</title></head>
+<body><h1>Server is ready for Django deployment!</h1></body>
+</html>
 EOF
 
-# Enable the site
-sudo ln -sf /etc/nginx/sites-available/$DOMAIN_NAME /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
+# Start a temporary web server for certbot
+print_status "Starting temporary web server on port 80..."
+sudo python3 -m http.server 80 --directory /tmp/certbot-webroot &
+HTTP_SERVER_PID=$!
 
-# Test nginx configuration
-sudo nginx -t
+# Wait a moment for the server to start and verify it's running
+sleep 3
+if ! sudo netstat -tlnp | grep ":80 " > /dev/null; then
+    print_error "Failed to start temporary web server on port 80"
+    exit 1
+fi
 
-# Restart nginx
-sudo systemctl restart nginx
+print_success "Temporary web server started successfully"
 
-# Obtain SSL certificate
+# Obtain SSL certificate using webroot method
 print_status "Obtaining SSL certificate for $DOMAIN_NAME..."
-sudo certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME --non-interactive --agree-tos --email admin@$DOMAIN_NAME
+sudo certbot certonly --webroot --webroot-path=/tmp/certbot-webroot -d $DOMAIN_NAME -d www.$DOMAIN_NAME --non-interactive --agree-tos --email admin@$DOMAIN_NAME
+
+# Stop the temporary web server
+print_status "Stopping temporary web server..."
+sudo kill $HTTP_SERVER_PID 2>/dev/null || true
 
 # Set up automatic SSL renewal
 print_status "Setting up automatic SSL renewal..."
