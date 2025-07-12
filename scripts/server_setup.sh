@@ -116,8 +116,6 @@ print_success "Ports 80 and 443 are now free"
 
 # Create a simple web server for SSL certificate validation
 print_status "Setting up temporary web server for SSL certificate..."
-sudo apt install -y python3-pip
-sudo pip3 install http-server
 
 # Create a simple HTML file for certificate validation
 sudo mkdir -p /tmp/certbot-webroot/.well-known/acme-challenge
@@ -129,9 +127,10 @@ sudo tee /tmp/certbot-webroot/index.html > /dev/null << EOF
 </html>
 EOF
 
-# Start a temporary web server for certbot
+# Start a temporary web server for certbot using Python's built-in server
 print_status "Starting temporary web server on port 80..."
-sudo python3 -m http.server 80 --directory /tmp/certbot-webroot &
+cd /tmp/certbot-webroot
+sudo python3 -m http.server 80 &
 HTTP_SERVER_PID=$!
 
 # Wait a moment for the server to start and verify it's running
@@ -150,6 +149,9 @@ sudo certbot certonly --webroot --webroot-path=/tmp/certbot-webroot -d $DOMAIN_N
 # Stop the temporary web server
 print_status "Stopping temporary web server..."
 sudo kill $HTTP_SERVER_PID 2>/dev/null || true
+
+# Return to original directory
+cd ~
 
 # Set up automatic SSL renewal
 print_status "Setting up automatic SSL renewal..."
