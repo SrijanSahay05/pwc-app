@@ -142,9 +142,28 @@ fi
 
 print_success "Temporary web server started successfully"
 
+# Check DNS resolution for the domain
+print_status "Checking DNS resolution for $DOMAIN_NAME..."
+if ! nslookup $DOMAIN_NAME > /dev/null 2>&1; then
+    print_error "DNS resolution failed for $DOMAIN_NAME"
+    print_error "Please ensure DNS records are properly configured before running this script"
+    exit 1
+fi
+
+print_success "DNS resolution successful for $DOMAIN_NAME"
+
+# Check if www subdomain exists
+if nslookup www.$DOMAIN_NAME > /dev/null 2>&1; then
+    print_status "www.$DOMAIN_NAME DNS record found, including in certificate"
+    DOMAINS="-d $DOMAIN_NAME -d www.$DOMAIN_NAME"
+else
+    print_warning "www.$DOMAIN_NAME DNS record not found, using main domain only"
+    DOMAINS="-d $DOMAIN_NAME"
+fi
+
 # Obtain SSL certificate using webroot method
 print_status "Obtaining SSL certificate for $DOMAIN_NAME..."
-sudo certbot certonly --webroot --webroot-path=/tmp/certbot-webroot -d $DOMAIN_NAME -d www.$DOMAIN_NAME --non-interactive --agree-tos --email admin@$DOMAIN_NAME
+sudo certbot certonly --webroot --webroot-path=/tmp/certbot-webroot $DOMAINS --non-interactive --agree-tos --email admin@$DOMAIN_NAME
 
 # Stop the temporary web server
 print_status "Stopping temporary web server..."
