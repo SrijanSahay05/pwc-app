@@ -53,11 +53,14 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf.template:ro
       - static_volume:/app/staticfiles:ro
       - media_volume:/app/media:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./certbot-www:/var/www/certbot:ro
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME}
+    command: /bin/bash -c "envsubst '$$DOMAIN_NAME' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
     depends_on:
       - web
     restart: always

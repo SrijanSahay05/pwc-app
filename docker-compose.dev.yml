@@ -42,7 +42,7 @@ services:
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "-L", "http://localhost:8000/admin/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -57,11 +57,10 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     depends_on:
-      web:
-        condition: service_healthy
+      - web
     restart: always
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
+      test: ["CMD", "curl", "-f", "-L", "http://localhost/admin/"]
       interval: 30s
       timeout: 10s
       retries: 3
